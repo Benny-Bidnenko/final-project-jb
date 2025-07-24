@@ -70,3 +70,9 @@ yarn-error.log*
 # Temporary files
 *.tmp
 *.temp
+
+# Environment files with credentials
+.env
+.env.*
+!.env.template
+!.env.example

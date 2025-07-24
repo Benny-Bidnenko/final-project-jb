@@ -1,0 +1,10 @@
+
+# Environment files with sensitive credentials
+.env
+.env.*
+!.env.template
+!.env.example
+
+# AWS credentials
+aws-credentials.txt
+credentials.json

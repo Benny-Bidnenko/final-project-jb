@@ -255,3 +255,81 @@ After successful deployment:
 - ✅ Expected AWS error is displayed (no fix needed at this stage)
 
 Your Docker deployment is complete! 🎉
+
+## 🔐 AWS Credentials Setup (Updated)
+
+### Method 1: Using the Setup Script (Recommended)
+
+```bash
+# On EC2 instance, in the app directory
+cd app
+./setup-credentials.sh
+
+# Follow the prompts to enter your credentials securely
+```
+
+### Method 2: Manual Environment File Creation
+
+```bash
+# On EC2 instance
+cd app
+cp .env.template .env
+
+# Edit the .env file with your actual credentials
+nano .env
+# or
+vi .env
+
+# Replace {{AWS_ACCESS_KEY_ID}} and {{AWS_SECRET_KEY}} with actual values
+```
+
+### Method 3: Export Environment Variables
+
+```bash
+# Set environment variables (temporary - lost on logout)
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_KEY="your-secret-key"
+export AWS_DEFAULT_REGION="us-east-1"
+
+# Then run container normally
+./run.sh --detach
+```
+
+### Method 4: Direct Docker Run with Credentials
+
+```bash
+# Run container with credentials directly
+docker run -d \
+  --name final-project-app \
+  -p 5001:5001 \
+  -e AWS_ACCESS_KEY_ID="your-access-key" \
+  -e AWS_SECRET_KEY="your-secret-key" \
+  -e AWS_DEFAULT_REGION="us-east-1" \
+  -e ENVIRONMENT="production" \
+  --restart unless-stopped \
+  final-project-jb:latest
+```
+
+### ⚠️ Security Notes
+
+1. **NEVER commit** .env files or credentials to version control
+2. **Use secure permissions**: `chmod 600 .env`
+3. **Rotate credentials** regularly
+4. **Use IAM roles** in production instead of access keys when possible
+
+### Expected Behavior After Setting Credentials
+
+Once credentials are properly configured, the application should:
+- ✅ Show "AWS Connection: Success" instead of error
+- ✅ Display AWS account information
+- ✅ Connect to AWS services without errors
+- ✅ Show AWS user/role ARN in the interface
+
+### Testing AWS Connection
+
+```bash
+# Test the connection
+curl http://<EC2_IP>:5001/aws-test
+
+# Should return success instead of error
+```
