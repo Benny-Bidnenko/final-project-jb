@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: flask-aws-monitor-netpol
+  namespace: default
+  labels:
+    app: flask-aws-monitor
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: flask-aws-monitor
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector: {}
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 5001
+  egress:
+  - {}  # Allow all egress traffic (for AWS API calls, etc.)
