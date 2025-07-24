@@ -8,7 +8,7 @@ Your Terraform configuration includes **everything** required by the assignment:
 
 **✅ Part 1: EC2 Instance Provisioning**
 - EC2 instance named "builder" ✅
-- Uses specified VPC `vpc-044604d0bfb707142` ✅
+- Uses specified VPC `vpc-0000000000000` ✅
 - Instance type `t3.medium` (supports Docker) ✅
 - Amazon Linux 2 AMI ✅
 - Launched in public subnet ✅
