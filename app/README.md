@@ -1,105 +1,180 @@
-# 🐳 Docker Python Flask Application
+# 🚀 AWS Resources Dashboard - Docker Application
 
 ## Overview
-Multi-stage Docker containerized Python Flask application with AWS integration for Final Project JB.
+Multi-stage Docker containerized Python Flask application that displays AWS resources including EC2 instances, VPCs, Load Balancers, and AMIs.
 
-## Features
+## ✨ Features
+
+### 🔧 **Fixed Application**
+- **Complete AWS Resources Dashboard** - Displays EC2, VPCs, ELBs, and AMIs
+- **Comprehensive Error Handling** - Graceful handling of missing credentials
+- **Beautiful UI** - Styled responsive web interface
+- **Production Ready** - Proper logging, health checks, and monitoring
+
+### 🐳 **Docker Features**
 - **Multi-stage Dockerfile** with optimized build and runtime stages
-- **Python Flask** web application with modern UI
-- **AWS SDK integration** with boto3
-- **Environment variable** configuration
+- **Security focused** - Non-root user, minimal attack surface
 - **Health checks** and monitoring endpoints
-- **Non-root user** for security
-- **Comprehensive logging** and error handling
+- **Environment variable** configuration
 
-## Quick Start
+## 🎯 Expected Behavior
 
-### Build the Image
+### Without AWS Credentials (Expected for Assignment):
+```
+❌ AWS Connection Error: AWS credentials not found. 
+Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.
+```
+- Shows clear error message with styling
+- Displays configuration status
+- Explains how to resolve the issue
+- Application doesn't crash
+
+### With Valid AWS Credentials:
+- ✅ **AWS Connection: Success**
+- Displays all EC2 instances in your account
+- Shows VPCs with CIDR blocks  
+- Lists load balancers (ALB/CLB)
+- Shows AMIs owned by the account
+- Beautiful responsive dashboard
+
+## 🚀 Quick Start
+
+### Build and Run (Without Credentials)
 ```bash
 ./build.sh
-```
-
-### Run the Container
-```bash
 ./run.sh --detach
+
+# Access the application
+curl http://localhost:5001
+# Shows expected AWS error message
 ```
 
-### Access the Application
-- Web UI: http://localhost:5001
-- Health Check: http://localhost:5001/health
-- AWS Test: http://localhost:5001/aws-test
-
-## Docker Commands
-
-### Manual Build
+### Run with AWS Credentials
 ```bash
+# Setup credentials interactively
+./setup-credentials.sh
+
+# Run with credentials
+./run.sh --env-file .env --detach
+
+# Access the application
+curl http://localhost:5001
+# Shows AWS resources dashboard
+```
+
+## 📋 Application Endpoints
+
+- **`/`** - Main AWS resources dashboard
+- **`/health`** - Health check endpoint (JSON)
+
+## 🔧 Docker Commands
+
+### Build Image
+```bash
+# Using script
+./build.sh
+
+# Manual
 docker build -t final-project-jb:latest .
 ```
 
-### Manual Run
+### Run Container
 ```bash
+# Using script (recommended)
+./run.sh --detach
+
+# With credentials
+./run.sh --env-file .env --detach
+
+# Manual run
 docker run -d -p 5001:5001 --name final-project-app final-project-jb:latest
 ```
 
-### With Environment Variables
+### With AWS Credentials
 ```bash
 docker run -d -p 5001:5001 \
-  -e AWS_ACCESS_KEY_ID=your-key \
-  -e AWS_SECRET_KEY=your-secret \
-  -e AWS_DEFAULT_REGION=us-east-1 \
+  -e AWS_ACCESS_KEY_ID="your-key" \
+  -e AWS_SECRET_ACCESS_KEY="your-secret" \
   --name final-project-app \
   final-project-jb:latest
 ```
 
-## Development
+## 🧪 Testing
 
-### Using Docker Compose
+### Health Check
 ```bash
-docker-compose up -d
+curl http://localhost:5001/health
 ```
 
-### View Logs
+### Load Testing
 ```bash
-docker logs -f final-project-app
+# Test without credentials (should show error)
+curl http://localhost:5001/
+
+# Test with credentials (should show resources)
+curl -H "Accept: text/html" http://localhost:5001/
 ```
 
-### Stop Container
+### Unit Tests
 ```bash
-docker stop final-project-app
+python3 test-app.py
 ```
 
-## File Structure
+## 📁 File Structure
 ```
 app/
 ├── Dockerfile              # Multi-stage Docker build
-├── app.py                  # Main Flask application
+├── app.py                  # Fixed Flask application  
 ├── requirements.txt        # Python dependencies
-├── docker-compose.yml      # Development setup
-├── .dockerignore          # Docker build exclusions
-├── build.sh               # Build automation script
-├── run.sh                 # Run automation script
+├── build.sh               # Build automation
+├── run.sh                 # Run automation  
+├── setup-credentials.sh    # AWS credentials setup
+├── test-app.py            # Unit tests
+├── .env.template          # Credential template
+├── FIXES_APPLIED.md       # Documentation of fixes
 └── README.md              # This file
 ```
 
-## Environment Variables
-- `AWS_ACCESS_KEY_ID` - AWS access key (optional)
-- `AWS_SECRET_KEY` - AWS secret key (optional)
-- `AWS_DEFAULT_REGION` - AWS region (default: us-east-1)
-- `ENVIRONMENT` - Application environment (default: production)
+## 🔐 Environment Variables
 
-## Endpoints
-- `/` - Main dashboard with system information
-- `/health` - Health check endpoint
-- `/aws-test` - AWS connectivity test
-- `/environment` - Environment information
-- `/api/status` - Complete JSON status
+- **`AWS_ACCESS_KEY_ID`** - AWS access key (required for full functionality)
+- **`AWS_SECRET_ACCESS_KEY`** - AWS secret key (required for full functionality)  
+- **`ENVIRONMENT`** - Application environment (default: production)
 
-## Expected Behavior
-The application will show an AWS connection error when credentials are not provided - this is expected and normal behavior for the assignment.
+## 🐞 Issues Fixed
 
-## Container Features
-- **Multi-stage build** reduces final image size
-- **Non-root user** improves security
-- **Health check** for container monitoring
-- **Proper signal handling** for graceful shutdown
-- **Volume support** for development
+The original provided code had several issues:
+
+1. ❌ **Missing API calls** - `vpcs`, `lbs`, `amis` variables were undefined
+2. ❌ **No error handling** - Would crash without credentials
+3. ❌ **Load balancer compatibility** - Didn't handle ALB vs CLB differences
+4. ❌ **Poor user experience** - No styling or helpful error messages
+
+### ✅ All Issues Resolved:
+- Complete error handling and graceful degradation
+- Proper AWS API calls with all required variables
+- Beautiful styled interface for both error and success states
+- Production-ready logging and monitoring
+- Backward compatibility for different AWS service types
+
+## 🎓 Assignment Compliance
+
+This application meets all assignment requirements:
+
+- ✅ **Multi-stage Dockerfile** - Optimized build process
+- ✅ **Requirements.txt** - All Python dependencies listed
+- ✅ **AWS environment variables** - Proper credential handling
+- ✅ **Port 5001** - Application exposed on correct port
+- ✅ **Error display** - Shows expected AWS error when credentials missing
+- ✅ **GitHub integration** - Code committed and pushed
+
+## 🚀 Deployment Ready
+
+The application is ready for:
+- ✅ **Local development** with Docker
+- ✅ **EC2 deployment** via Terraform
+- ✅ **Production use** with proper credentials
+- ✅ **Monitoring** with health checks
+- ✅ **Scaling** with container orchestration
+
+Perfect for demonstrating AWS integration in a containerized environment! 🎉
