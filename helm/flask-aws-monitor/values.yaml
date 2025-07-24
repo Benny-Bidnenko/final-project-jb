@@ -45,8 +45,8 @@ deployment:
     enabled: true
     # Base64 encoded values (will be created as secret)
     # Use: echo -n "your-key" | base64
-    accessKeyId: "eW91ci1hd3MtYWNjZXNzLWtleQ=="  # your-aws-access-key
-    secretAccessKey: "eW91ci1hd3Mtc2VjcmV0LWtleQ=="  # your-aws-secret-key
+    accessKeyId: "eW91ci1hd3MtYWNjZXQ=="  # your-aws-access-key
+    secretAccessKey: "eW91ci1hd3Mtc2VjcmeQ=="  # your-aws-secret-key
     # Alternative: reference existing secret
     # existingSecret: aws-credentials
 
