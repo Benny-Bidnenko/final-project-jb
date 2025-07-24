@@ -1,0 +1,16 @@
+# Copy this file to terraform.tfvars and customize as needed
+
+# AWS Region
+aws_region = "us-east-1"
+
+# VPC ID (provided - DO NOT CHANGE)
+vpc_id = "vpc-044604d0bfb707142"
+
+# Instance Type (adjust based on your needs)
+instance_type = "t3.medium"
+
+# Environment
+environment = "development"
+
+# Project Name
+project_name = "final-project-jb"
