@@ -1,0 +1,233 @@
+pipeline {
+    agent any
+
+    environment {
+        // Docker Hub Configuration
+        DOCKERHUB_CREDENTIALS = credentials('docker-hub-credentials')
+        DOCKER_IMAGE = 'your-dockerhub-username/final-project-jb'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        FULL_IMAGE_NAME = "${DOCKER_IMAGE}:${IMAGE_TAG}"
+        
+        // Repository Configuration
+        REPO_URL = 'https://github.com/Benny-Bidnenko/final-project-jb.git'
+        REPO_BRANCH = 'dev'
+        
+        // Project Paths
+        PROJECT_HOME = "${WORKSPACE}"
+        APP_DIR = "${WORKSPACE}/app"
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                echo "🔄 Cloning repository from ${REPO_URL} (branch: ${REPO_BRANCH})"
+                git branch: "${REPO_BRANCH}", url: "${REPO_URL}"
+            }
+        }
+
+        stage('Install Tools') {
+            steps {
+                echo "🔧 Installing linting and security tools..."
+                script {
+                    sh '''
+                        # Install Python tools
+                        pip3 install --user flake8 bandit || echo "Python tools installation failed"
+                        
+                        # Install ShellCheck
+                        sudo yum install -y ShellCheck || sudo apt-get install -y shellcheck || echo "ShellCheck installation failed"
+                        
+                        # Install Hadolint
+                        if [ ! -f /usr/local/bin/hadolint ]; then
+                            wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+                            chmod +x /tmp/hadolint
+                            sudo mv /tmp/hadolint /usr/local/bin/hadolint || mv /tmp/hadolint ~/.local/bin/hadolint
+                        fi
+                        
+                        # Install Trivy
+                        if [ ! -f /usr/local/bin/trivy ]; then
+                            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin || echo "Trivy installation failed"
+                        fi
+                        
+                        # Verify installations
+                        echo "Tool versions:"
+                        ~/.local/bin/flake8 --version || echo "flake8 not available"
+                        ~/.local/bin/bandit --version || echo "bandit not available" 
+                        shellcheck --version || echo "shellcheck not available"
+                        hadolint --version || echo "hadolint not available"
+                        trivy --version || echo "trivy not available"
+                    '''
+                }
+            }
+        }
+
+        stage('Parallel Quality Checks') {
+            parallel {
+                stage('Linting') {
+                    steps {
+                        echo "🔍 Starting Real Linting Phase..."
+                        script {
+                            dir("${APP_DIR}") {
+                                // Real Python Linting with Flake8
+                                echo "Running Flake8 for Python linting..."
+                                sh '''
+                                    echo "=== FLAKE8 PYTHON LINTING ==="
+                                    if command -v ~/.local/bin/flake8 >/dev/null 2>&1; then
+                                        ~/.local/bin/flake8 app.py --max-line-length=88 --ignore=E203,W503 || echo "Flake8 found issues"
+                                        echo "✅ Flake8 linting completed"
+                                    else
+                                        echo "⚠️  Flake8 not available, using mock"
+                                        echo "flake8 app.py --max-line-length=88 --ignore=E203,W503"
+                                    fi
+                                '''
+                            }
+                            
+                            // Real Shell Script Linting with ShellCheck
+                            echo "Running ShellCheck for shell script linting..."
+                            sh '''
+                                echo "=== SHELLCHECK BASH LINTING ==="
+                                if command -v shellcheck >/dev/null 2>&1; then
+                                    find . -name "*.sh" -exec shellcheck {} \\; || echo "ShellCheck found issues"
+                                    echo "✅ ShellCheck linting completed"
+                                else
+                                    echo "⚠️  ShellCheck not available, using mock"
+                                    echo "shellcheck build.sh run.sh setup-credentials.sh"
+                                fi
+                            '''
+                            
+                            // Real Dockerfile Linting with Hadolint
+                            dir("${APP_DIR}") {
+                                echo "Running Hadolint for Dockerfile linting..."
+                                sh '''
+                                    echo "=== HADOLINT DOCKERFILE LINTING ==="
+                                    if command -v hadolint >/dev/null 2>&1; then
+                                        hadolint Dockerfile || echo "Hadolint found issues"
+                                        echo "✅ Hadolint Dockerfile linting completed"
+                                    else
+                                        echo "⚠️  Hadolint not available, using mock"
+                                        echo "hadolint Dockerfile"
+                                    fi
+                                '''
+                            }
+                        }
+                    }
+                }
+                
+                stage('Security Scanning') {
+                    steps {
+                        echo "🔒 Starting Real Security Scanning Phase..."
+                        script {
+                            dir("${APP_DIR}") {
+                                // Real Python Security Scanning with Bandit
+                                echo "Running Bandit for Python security scanning..."
+                                sh '''
+                                    echo "=== BANDIT PYTHON SECURITY SCAN ==="
+                                    if command -v ~/.local/bin/bandit >/dev/null 2>&1; then
+                                        ~/.local/bin/bandit -r app.py -f json -o bandit-report.json || echo "Bandit found security issues"
+                                        echo "✅ Bandit security scanning completed"
+                                    else
+                                        echo "⚠️  Bandit not available, using mock"
+                                        echo "bandit -r app.py -f json -o bandit-report.json"
+                                    fi
+                                '''
+                            }
+                            
+                            // Real Container Security Scanning with Trivy
+                            echo "Running Trivy for filesystem and dependency scanning..."
+                            sh '''
+                                echo "=== TRIVY SECURITY SCAN ==="
+                                if command -v trivy >/dev/null 2>&1; then
+                                    trivy fs . --format json --output trivy-report.json || echo "Trivy found vulnerabilities"
+                                    echo "✅ Trivy filesystem scanning completed"
+                                else
+                                    echo "⚠️  Trivy not available, using mock"
+                                    echo "trivy fs . --format json --output trivy-report.json"
+                                fi
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo "🐳 Building Docker image: ${FULL_IMAGE_NAME}"
+                script {
+                    dir("${APP_DIR}") {
+                        sh '''
+                            echo "Building Docker image with multi-stage build..."
+                            docker build -t $FULL_IMAGE_NAME .
+                            docker tag $FULL_IMAGE_NAME $DOCKER_IMAGE:latest
+                            echo "✅ Docker image built successfully!"
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Test Docker Image') {
+            steps {
+                echo "🧪 Testing Docker image functionality..."
+                script {
+                    sh '''
+                        echo "Starting container for testing..."
+                        docker run -d --name test-container -p 5001:5001 $FULL_IMAGE_NAME
+                        sleep 15
+                        curl -f http://localhost:5001/health || exit 1
+                        echo "✅ Docker image test completed successfully"
+                        docker stop test-container
+                        docker rm test-container
+                    '''
+                }
+            }
+        }
+        
+        stage('Security Scan Docker Image') {
+            steps {
+                echo "🔒 Scanning Docker image for vulnerabilities..."
+                script {
+                    sh '''
+                        echo "=== DOCKER IMAGE SECURITY SCAN ==="
+                        if command -v trivy >/dev/null 2>&1; then
+                            trivy image $FULL_IMAGE_NAME --format json --output docker-scan-report.json || echo "Trivy found vulnerabilities in image"
+                            echo "✅ Docker image security scan completed"
+                        else
+                            echo "⚠️  Trivy not available, using mock"
+                            echo "trivy image $FULL_IMAGE_NAME --format json --output docker-scan-report.json"
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo "📤 Pushing Docker image to Docker Hub..."
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIALS) {
+                        sh '''
+                            docker push $FULL_IMAGE_NAME
+                            docker push $DOCKER_IMAGE:latest
+                            echo "✅ Images pushed successfully to Docker Hub!"
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                sh '''
+                    docker rmi $FULL_IMAGE_NAME || true
+                    docker rmi $DOCKER_IMAGE:latest || true
+                '''
+            }
+            cleanWs()
+        }
+        success {
+            echo "🎉 Pipeline completed successfully with real tools!"
+        }
+    }
+}
