@@ -1,0 +1,15 @@
+{
+  "project": {
+    "name": "Final Project JB",
+    "version": "1.0.0",
+    "description": "Final project implementing Git Flow workflow",
+    "author": "Your Name",
+    "sections": [
+      "project-setup",
+      "core-functionality", 
+      "user-interface",
+      "testing-documentation",
+      "deployment-cicd"
+    ]
+  }
+}
