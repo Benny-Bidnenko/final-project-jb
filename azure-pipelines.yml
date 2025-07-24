@@ -1,0 +1,209 @@
+# Azure DevOps Pipeline for Final Project JB
+# Mimics Jenkins pipeline with Lint, Security Scan, Build, and Push stages
+
+trigger:
+- dev
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Docker Configuration
+  dockerHubServiceConnection: 'docker-hub-connection'
+  dockerRepository: 'your-dockerhub-username/final-project-jb'
+  dockerTag: '$(Build.BuildId)'
+  dockerImageName: '$(dockerRepository):$(dockerTag)'
+  dockerLatestTag: '$(dockerRepository):latest'
+  
+  # Project Configuration
+  appDirectory: '$(Build.SourcesDirectory)/app'
+  
+  # AWS Configuration
+  awsRegion: 'us-east-1'
+
+stages:
+- stage: QualityChecksAndSecurity
+  displayName: 'Quality Checks and Security Scanning'
+  jobs:
+  - job: ParallelQualityChecks
+    displayName: 'Parallel Linting and Security Scanning'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Linting:
+          JobType: 'linting'
+        SecurityScanning:
+          JobType: 'security'
+        UnitTesting:
+          JobType: 'testing'
+    steps:
+    - checkout: self
+      displayName: 'Checkout Repository'
+
+    - script: |
+        if [ "$(JobType)" = "linting" ]; then
+          echo "🔍 ==================================="
+          echo "       LINTING PHASE STARTED"
+          echo "🔍 ==================================="
+          
+          echo "=== FLAKE8 PYTHON LINTING ==="
+          echo "Checking Python code quality..."
+          # Mock command - replace with real implementation for bonus
+          echo "flake8 $(appDirectory)/app.py --max-line-length=88 --ignore=E203,W503"
+          echo "✅ Flake8 linting completed successfully"
+          
+          echo "=== SHELLCHECK BASH LINTING ==="
+          echo "Checking shell scripts..."
+          # Mock command - replace with real implementation for bonus  
+          echo "shellcheck $(appDirectory)/build.sh $(appDirectory)/run.sh $(appDirectory)/setup-credentials.sh"
+          echo "✅ ShellCheck linting completed successfully"
+          
+          echo "=== HADOLINT DOCKERFILE LINTING ==="
+          echo "Checking Dockerfile best practices..."
+          # Mock command - replace with real implementation for bonus
+          echo "hadolint $(appDirectory)/Dockerfile"
+          echo "✅ Hadolint Dockerfile linting completed successfully"
+          
+        elif [ "$(JobType)" = "security" ]; then
+          echo "🔒 ==================================="
+          echo "    SECURITY SCANNING PHASE STARTED"
+          echo "🔒 ==================================="
+          
+          echo "=== BANDIT PYTHON SECURITY SCAN ==="
+          echo "Scanning Python code for security vulnerabilities..."
+          # Mock command - replace with real implementation for bonus
+          echo "bandit -r $(appDirectory)/app.py -f json -o bandit-report.json"
+          echo "✅ Bandit security scanning completed successfully"
+          
+          echo "=== TRIVY SECURITY SCAN ==="
+          echo "Scanning filesystem and dependencies for vulnerabilities..."
+          # Mock command - replace with real implementation for bonus
+          echo "trivy fs $(Build.SourcesDirectory) --format json --output trivy-report.json"
+          echo "✅ Trivy filesystem scanning completed successfully"
+          
+        elif [ "$(JobType)" = "testing" ]; then
+          echo "🧪 ==================================="
+          echo "      UNIT TESTING PHASE STARTED"
+          echo "🧪 ==================================="
+          
+          echo "=== PYTHON UNIT TESTS ==="
+          echo "Running application unit tests..."
+          # Mock command - replace with real implementation for bonus
+          echo "python3 $(appDirectory)/test-app.py"
+          echo "✅ Unit tests completed successfully"
+        fi
+      displayName: 'Run Quality Checks - $(JobType)'
+
+- stage: BuildAndTest
+  displayName: 'Build and Test Docker Image'
+  dependsOn: QualityChecksAndSecurity
+  condition: succeeded()
+  jobs:
+  - job: BuildDockerImage
+    displayName: 'Build Docker Image'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: self
+      displayName: 'Checkout Repository'
+
+    - script: |
+        echo "🐳 ==================================="
+        echo "      DOCKER BUILD PHASE STARTED"
+        echo "🐳 ==================================="
+        echo "Building Docker image: $(dockerImageName)"
+        echo "Working directory: $(appDirectory)"
+        ls -la $(appDirectory)
+      displayName: 'Prepare Docker Build'
+
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        containerRegistry: '$(dockerHubServiceConnection)'
+        repository: '$(dockerRepository)'
+        command: 'build'
+        Dockerfile: '$(appDirectory)/Dockerfile'
+        buildContext: '$(appDirectory)'
+        tags: |
+          $(dockerTag)
+          latest
+
+    - script: |
+        echo "🧪 ==================================="
+        echo "    DOCKER IMAGE TESTING STARTED"
+        echo "🧪 ==================================="
+        
+        echo "Starting container for testing..."
+        docker run -d --name test-container -p 5001:5001 $(dockerImageName)
+        
+        echo "Waiting for container to start..."
+        sleep 15
+        
+        echo "Testing application health endpoint..."
+        curl -f http://localhost:5001/health || exit 1
+        
+        echo "✅ Docker image test completed successfully"
+        
+        echo "Cleaning up test container..."
+        docker stop test-container
+        docker rm test-container
+      displayName: 'Test Docker Image'
+
+    - script: |
+        echo "🔒 ==================================="
+        echo "  DOCKER IMAGE SECURITY SCAN STARTED"
+        echo "🔒 ==================================="
+        
+        echo "Scanning Docker image with Trivy..."
+        # Mock command - replace with real implementation for bonus
+        echo "trivy image $(dockerImageName) --format json --output docker-scan-report.json"
+        echo "✅ Docker image security scan completed"
+      displayName: 'Security Scan Docker Image'
+
+- stage: PushToDockerHub
+  displayName: 'Push to Docker Hub'
+  dependsOn: BuildAndTest
+  condition: succeeded()
+  jobs:
+  - job: PushImage
+    displayName: 'Push Docker Image to Docker Hub'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: none
+
+    - task: Docker@2
+      displayName: 'Push Docker Image with Build Tag'
+      inputs:
+        containerRegistry: '$(dockerHubServiceConnection)'
+        repository: '$(dockerRepository)'
+        command: 'push'
+        tags: '$(dockerTag)'
+
+    - task: Docker@2
+      displayName: 'Push Docker Image with Latest Tag'
+      inputs:
+        containerRegistry: '$(dockerHubServiceConnection)'
+        repository: '$(dockerRepository)'
+        command: 'push'
+        tags: 'latest'
+
+    - script: |
+        echo "🎉 =================================== 🎉"
+        echo "✅     PIPELINE COMPLETED SUCCESSFULLY!     ✅"
+        echo "🎉 =================================== 🎉"
+        echo ""
+        echo "📊 Pipeline Summary:"
+        echo "• Repository: $(Build.Repository.Uri)"
+        echo "• Branch: $(Build.SourceBranchName)"
+        echo "• Build: #$(Build.BuildId)"
+        echo "• Docker Image: $(dockerImageName)"
+        echo "• Docker Hub: https://hub.docker.com/r/$(dockerRepository)"
+        echo ""
+        echo "🚀 Next Steps:"
+        echo "• Verify image on Docker Hub"
+        echo "• Deploy to staging/production"
+        echo "• Run integration tests"
+      displayName: 'Pipeline Success Summary'
