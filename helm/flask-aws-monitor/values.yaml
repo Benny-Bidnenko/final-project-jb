@@ -1,0 +1,222 @@
+# Default values for flask-aws-monitor Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be substituted into your templates.
+
+# Application Configuration
+app:
+  name: flask-aws-monitor
+  version: "1.0.0"
+
+# Docker Image Configuration
+image:
+  repository: your-dockerhub-username/flask-aws-monitor
+  tag: latest
+  pullPolicy: Always
+  # Secrets for private repositories (optional)
+  # pullSecrets:
+  #   - name: docker-registry-secret
+
+# Deployment Configuration
+deployment:
+  # Number of replicas
+  replicaCount: 3
+  
+  # Rolling Update Strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  
+  # Container Configuration
+  container:
+    name: flask-aws-monitor
+    port: 5001
+    
+  # Environment Variables
+  env:
+    ENVIRONMENT: "production"
+    AWS_DEFAULT_REGION: "us-east-1"
+    FLASK_ENV: "production"
+  
+  # AWS Credentials (will be stored in Kubernetes Secret)
+  awsCredentials:
+    # Set to true to create AWS credentials secret
+    enabled: true
+    # Base64 encoded values (will be created as secret)
+    # Use: echo -n "your-key" | base64
+    accessKeyId: "eW91ci1hd3MtYWNjZXNzLWtleQ=="  # your-aws-access-key
+    secretAccessKey: "eW91ci1hd3Mtc2VjcmV0LWtleQ=="  # your-aws-secret-key
+    # Alternative: reference existing secret
+    # existingSecret: aws-credentials
+
+# Resource Limits and Requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Service Configuration
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 5001
+  # For NodePort service
+  nodePort: 30001
+  # Service annotations
+  annotations: {}
+  # AWS Load Balancer annotations (if using EKS)
+  # annotations:
+  #   service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  #   service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+# Ingress Configuration
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: flask-aws-monitor.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # tls:
+  #   - secretName: flask-aws-monitor-tls
+  #     hosts:
+  #       - flask-aws-monitor.local
+
+# Health Check Configuration
+healthCheck:
+  liveness:
+    enabled: true
+    path: /health
+    port: 5001
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  
+  readiness:
+    enabled: true
+    path: /health
+    port: 5001
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+    successThreshold: 1
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod Security Context
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Container Security Context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop:
+    - ALL
+
+# Node Selection
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Pod Anti-Affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - flask-aws-monitor
+        topologyKey: kubernetes.io/hostname
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from: []
+      ports:
+      - protocol: TCP
+        port: 5001
+  egress:
+    - {}  # Allow all egress
+
+# ConfigMap
+configMap:
+  enabled: true
+  data:
+    app.properties: |
+      # Flask AWS Monitor Application Configuration
+      environment=production
+      debug=false
+      testing=false
+      aws.region=us-east-1
+      aws.timeout=30
+      log.level=INFO
+      log.format=json
+    health.properties: |
+      health.check.interval=10
+      health.check.timeout=5
+      health.check.retries=3
+
+# Service Account
+serviceAccount:
+  # Create a service account
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Pod Labels
+podLabels:
+  app.kubernetes.io/component: backend
+  app.kubernetes.io/part-of: final-project-jb
+
+# Pod Annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "5001"
+  prometheus.io/path: "/health"
+
+# Monitoring (if Prometheus is available)
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    path: /health

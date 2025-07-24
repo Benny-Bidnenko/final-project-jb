@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flask-aws-monitor.fullname" . }}
+  labels:
+    {{- include "flask-aws-monitor.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "flask-aws-monitor.selectorLabels" . | nindent 4 }}
+  {{- if eq .Values.service.type "LoadBalancer" }}
+  externalTrafficPolicy: Cluster
+  {{- end }}
+---
+{{/* Additional ClusterIP service for internal communication */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flask-aws-monitor.fullname" . }}-internal
+  labels:
+    {{- include "flask-aws-monitor.labels" . | nindent 4 }}
+    service-type: internal
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.service.targetPort }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "flask-aws-monitor.selectorLabels" . | nindent 4 }}
+{{- if and (eq .Values.service.type "LoadBalancer") (not (eq .Values.service.type "NodePort")) }}
+---
+{{/* NodePort service as backup */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flask-aws-monitor.fullname" . }}-nodeport
+  labels:
+    {{- include "flask-aws-monitor.labels" . | nindent 4 }}
+    service-type: nodeport
+spec:
+  type: NodePort
+  ports:
+    - port: {{ .Values.service.targetPort }}
+      targetPort: {{ .Values.service.targetPort }}
+      nodePort: {{ .Values.service.nodePort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "flask-aws-monitor.selectorLabels" . | nindent 4 }}
+{{- end }}

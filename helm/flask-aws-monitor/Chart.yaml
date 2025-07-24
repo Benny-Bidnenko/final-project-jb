@@ -1,0 +1,23 @@
+apiVersion: v2
+name: flask-aws-monitor
+description: A Helm chart for deploying Flask AWS Monitor application to Kubernetes
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/Benny-Bidnenko/final-project-jb
+sources:
+  - https://github.com/Benny-Bidnenko/final-project-jb
+maintainers:
+  - name: Final Project JB
+    email: your-email@example.com
+keywords:
+  - flask
+  - aws
+  - monitoring
+  - python
+  - kubernetes
+  - docker
+annotations:
+  category: Web Applications
+  licenses: MIT
+dependencies: []
