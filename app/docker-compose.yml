@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: final-project-jb-app
+    ports:
+      - "5001:5001"
+    environment:
+      - ENVIRONMENT=development
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-not-provided}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-not-provided}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY:-not-provided}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      # Mount source code for development (optional)
+      - ./app.py:/app/app.py:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+    name: final-project-jb-network
